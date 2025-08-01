@@ -84,6 +84,7 @@ public class MIDIDMX : UdonSharpBehaviour
                 knockState = 3;
                 unlocked = true;
                 Debug.Log("[MIDIDMX] Unlocked and ready.");
+                dataBlock = 0;
                 ClearChannels();
             }
             else
