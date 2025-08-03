@@ -95,7 +95,7 @@ public class MIDIDMX : UdonSharpBehaviour
         }
 
         //bank swapping for more than 2k of channels [requires 9 Universe VRSL or MDMX]
-        if (channel == 15 && number == 127 && value > 0 && value < 8)
+        if (channel == 15 && number == 127 && value >= 0 && value < 8)
         {
             dataBlock = value;
             Debug.Log("MIDIBLOCK" + value.ToString());
