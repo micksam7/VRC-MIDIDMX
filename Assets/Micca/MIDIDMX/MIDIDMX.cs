@@ -1,9 +1,15 @@
-﻿
-using UdonSharp;
+﻿using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.Midi;
 using VRC.SDKBase;
 using VRC.Udon;
+using System.Collections.Generic;
+using System;
+
+
+#if MDMX
+using MDMX;
+#endif
 
 //micca code
 //this udon was written to keep the number of non-extern ops low
@@ -30,8 +36,12 @@ public class MIDIDMX : UdonSharpBehaviour
 
     private float lastUpdate = 0;
 
-    bool unlocked = false;
+    bool state = false;
+    bool previousState = false;
     int knockState = 0;
+
+    Component[] eventObjects = new Component[0];
+    string[] eventCallbacks = new string[0];
 
     //float for final shader
     [System.NonSerialized]
@@ -42,6 +52,40 @@ public class MIDIDMX : UdonSharpBehaviour
     void Start()
     {
         MIDIDMXRenderMat.SetInt("_Mode", (int)mode);
+    }
+
+    /// <summary>
+    /// Gets current state of MIDIDMX.
+    /// True if MIDIDMX is active.
+    /// False if MIDIDMX is inactive or lost the data stream.
+    /// </summary>
+    /// <returns></returns>
+    public bool GetState()
+    {
+        return state;
+    }
+
+    /// <summary>
+    /// Register a callback when MIDIDMX's state changes.
+    /// Use GetState() to check what state MIDIDMX is currently in.
+    /// </summary>
+    /// <param name="obj">UdonBehavior to call back to</param>
+    /// <param name="callback">Function to call within that UdonBehavior</param>
+    public void _RegisterEvent(Component obj, string callback)
+    {
+        eventObjects = Add(eventObjects, obj);
+        eventCallbacks = Add(eventCallbacks, callback);
+    }
+
+    void ProcessEvents()
+    {
+        for (int i = 0; i < eventObjects.Length; i++)
+        {
+            if (!eventObjects[i]) continue;
+            UdonBehaviour behaviour = (UdonBehaviour) eventObjects[i];
+            if (Utilities.IsValid(behaviour))
+                behaviour.SendCustomEvent(eventCallbacks[i]);
+        }
     }
 
     //midi packet: 4 bit + 7 bit + 7 bit - decode into: 10 bit address, 8 bit value
@@ -67,7 +111,7 @@ public class MIDIDMX : UdonSharpBehaviour
     public override void MidiControlChange(int channel, int number, int value)
     {
         //knocking
-        if (!unlocked)
+        if (!state)
         {
             if (channel != 15 || number != 127) return;
 
@@ -82,8 +126,8 @@ public class MIDIDMX : UdonSharpBehaviour
             else if (knockState == 2 && value == 107)
             {
                 knockState = 3;
-                unlocked = true;
-                Debug.Log("[MIDIDMX] Unlocked and ready.");
+                state = true;
+                Debug.Log("[MIDIDMX] state and ready.");
                 dataBlock = 0;
                 ClearChannels();
             }
@@ -129,7 +173,7 @@ public class MIDIDMX : UdonSharpBehaviour
     {
         //Only update if we're getting the ping packet
         //Otherwise we release the texture [assuming script order is right :)]
-        if (unlocked && lastUpdate > Time.fixedTime - 5)
+        if (state && lastUpdate > Time.fixedTime - 5)
         {
             //unrolllllllllllllllllll
             //tho those ids should be ints tbh
@@ -146,9 +190,35 @@ public class MIDIDMX : UdonSharpBehaviour
         }
         else
         {
-            unlocked = false;
+            state = false;
             knockState = 0;
+        }
+
+        if (previousState != state)
+        {
+            previousState = state;
+            ProcessEvents();
         }
     }
 
+
+
+    //util functions
+    private string[] Add(string[] inputArray, string toAdd)
+    {
+        string[] output = new string[inputArray.Length + 1];
+        Array.Copy(inputArray, output, inputArray.Length);
+        output[inputArray.Length] = toAdd;
+
+        return output;
+    }
+
+    private Component[] Add(Component[] inputArray, Component toAdd)
+    {
+        Component[] output = new Component[inputArray.Length + 1];
+        Array.Copy(inputArray, output, inputArray.Length);
+        output[inputArray.Length] = toAdd;
+
+        return output;
+    }
 }
