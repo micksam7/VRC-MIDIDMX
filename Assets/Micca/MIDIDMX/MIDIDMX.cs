@@ -6,11 +6,6 @@ using VRC.Udon;
 using System.Collections.Generic;
 using System;
 
-
-#if MDMX
-using MDMX;
-#endif
-
 //micca code
 //this udon was written to keep the number of non-extern ops low
 //so most of the work is shuffled off to a shader
@@ -151,7 +146,7 @@ public class MIDIDMX : UdonSharpBehaviour
             ClearChannels();
         }
 
-        //Because of a _very_ fun bug in the portmidi C# adapter, we need this to ensure we can keep sending data
+        //Because of a _very_ fun bug in the portmidi C# adapter [that VRC uses], we need this to ensure we can keep sending data
         //So we spam the logs and the grid reads it to make sure vrc is ready for more, and the client is still alive
         //Otherwise, we can overflow the midi buffer and cause a very nasty client crash. :)
         if (channel == 15 && number == 127 && value == 127)
