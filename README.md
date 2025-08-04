@@ -16,3 +16,13 @@ Requires a compatible gridnode, such as [HNode](https://github.com/Happyrobot33/
 For loopback, [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) with **feedback detection turned off** is recommended.
 
 Ensure you have VRChat launched with the launch option `--midi=` set to your loopback device.
+
+## Udon API
+
+There's a small API for getting the current connected state of MIDIDMX.
+
+You can get a callback when a connection is made or broken with:
+`mididmx._Register(this,_nameof(callbackFunctionHere))`
+
+And get the current status with:
+`mididmx.GetState();`
