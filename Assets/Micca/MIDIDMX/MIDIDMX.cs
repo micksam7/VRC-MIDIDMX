@@ -105,11 +105,12 @@ public class MIDIDMX : UdonSharpBehaviour
 
     public override void MidiControlChange(int channel, int number, int value)
     {
-        //knocking
+        //all control messages are channel 15 and note 127
+        if (channel != 15 || number != 127) return;
+
+        //knocking to start MIDIDMX
         if (!state)
         {
-            if (channel != 15 || number != 127) return;
-
             if (knockState == 0 && value == 101)
             {
                 knockState = 1;
@@ -134,14 +135,14 @@ public class MIDIDMX : UdonSharpBehaviour
         }
 
         //bank swapping for more than 2k of channels [requires 9 Universe VRSL or MDMX]
-        if (channel == 15 && number == 127 && value >= 0 && value < 8)
+        if (value >= 0 && value < 8)
         {
             dataBlock = value;
             Debug.Log("MIDIBLOCK" + value.ToString());
         }
 
         //clear all channels
-        if (channel == 15 && number == 127 && value == 100)
+        if (value == 100)
         {
             ClearChannels();
         }
@@ -149,7 +150,7 @@ public class MIDIDMX : UdonSharpBehaviour
         //Because of a _very_ fun bug in the portmidi C# adapter [that VRC uses], we need this to ensure we can keep sending data
         //So we spam the logs and the grid reads it to make sure vrc is ready for more, and the client is still alive
         //Otherwise, we can overflow the midi buffer and cause a very nasty client crash. :)
-        if (channel == 15 && number == 127 && value == 127)
+        if (value == 127)
         {
             lastUpdate = Time.fixedTime;
             Debug.Log("MIDIREADY");
