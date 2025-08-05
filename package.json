@@ -1,0 +1,18 @@
+{
+  "name": "com.micksam7.mididmx",
+  "displayName": "com.micksam7.mididmx",
+  "version": "1.0.0",
+  "description": "Realtime DMX control for VRChat Worlds using MIDI",
+  "dependencies": {},
+  "gitDependencies": {},
+  "vpmDependencies": {},
+  "author": {
+    "name": "Micca",
+    "email": "me@micksam7.com",
+    "url": "https://lomg.fyi/"
+  },
+  "legacyFolders": {
+    "Assets\\Micca\\MIDIDMX": ""
+  },
+  "legacyFiles": {}
+}
