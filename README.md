@@ -1,4 +1,4 @@
-# VRC-MIDIDMX
+![MIDIDMX, a method of screaming really loudly over MIDI to get DMX data into VRChat worlds.](Runtime/Propaganda/logo-cropped.png)
 A method for implementing realtime DMX control into a VRChat world over MIDI interfaces.
 
 Supports [VRSL](https://github.com/AcChosen/VR-Stage-Lighting), [VRSL 9 Universe Mode](https://github.com/AcChosen/VR-Stage-Lighting), and MDMX
