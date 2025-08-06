@@ -10,7 +10,7 @@ For gridnode developers and the curious, [the protocol is documented here](PROTO
 ## For World Builders
 ### ➡️ [Add to Creator Companion](https://vpm.micksam7.com/) ⬅️
 
-When a compatible gridnode connects, MIDIDMX automatically replaces the DMX texture with it's own.
+When a compatible gridnode connects, MIDIDMX automatically replaces the DMX texture with it's own for as long as MIDI data is sent.
 
 If you're using [VideoTXL](https://github.com/vrctxl/VideoTXL), drop the prefab into scene and upload.
 
@@ -38,7 +38,7 @@ And get the current status with:
 ## Frequently Asked Questions
 
 ### How do I use this in editor?
-If your gridnode supports editor log watching, you can test in editor by going to `VRChat SDK -> Utilities -> Midi` and picking your input MIDI device.
+- If your gridnode supports editor log watching, you can test in editor by going to `VRChat SDK -> Utilities -> Midi` and picking your input MIDI device.
 
 ### MIDI isn't working!
 - Ensure you have your midi loopback device or software enabled before launching VRChat and your gridnode software.
