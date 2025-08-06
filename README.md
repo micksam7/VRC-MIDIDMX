@@ -1,7 +1,9 @@
-![MIDIDMX, a method of screaming really loudly over MIDI to get DMX data into VRChat worlds.](Runtime/Propaganda/logo-cropped.png)
+![MIDIDMX, of screaming really loudly over MIDI.](Runtime/Propaganda/logo-cropped.png)
 A method for implementing realtime DMX control into a VRChat world over MIDI interfaces.
 
-Supports [VRSL](https://github.com/AcChosen/VR-Stage-Lighting), [VRSL 9 Universe Mode](https://github.com/AcChosen/VR-Stage-Lighting), and MDMX
+Supports [VRSL](https://github.com/AcChosen/VR-Stage-Lighting), [VRSL 9 Universe Mode](https://github.com/AcChosen/VR-Stage-Lighting), and MDMX.
+
+For gridnode developers and the curious, [the protocol is documented here](PROTOCOL.md).
 
 ## For World Builders
 ### ➡️ [Add to Creator Companion](https://vpm.micksam7.com/) ⬅️
