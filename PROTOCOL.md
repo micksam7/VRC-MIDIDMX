@@ -60,8 +60,7 @@ int midiVelocity = (dmxValue & 0x7F);
 
 ## Control Messages and Knocking
 
-Control Messages are standard MIDI _Control Change_ messages, limited to the very last channel `15` and very last note `127`.
-The value/velocity is the only part of the message that changes.
+MIDIDMX Control Messages are standard MIDI _Control Change_ messages, using the very last channel `15` and very last note `127`, with the _Data Value_ being one of the following:
 
 ### Value `0` thru `7` - Bank switching
 If you have more than 4 Universes of DMX (2048 Channels), you must utilize bank switching. Each bank is 2048 channels wide and selectable by sending 0 through 7 to select the bank (for 8 banks total).
@@ -82,4 +81,5 @@ After knocking, you should _Switch the Bank_ to 0, _Cear the World Buffer_, and 
 
 ## Implementations and Notes
 [HNode has a pretty good implementation](https://github.com/Happyrobot33/HNode/blob/main/Assets/Plugin/Exporters/MIDIDMX.cs) if you want a starting point.
+
 
