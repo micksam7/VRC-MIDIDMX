@@ -5,8 +5,6 @@
         "VRC.SDK3",
         "VRC.SDKBase",
         "UdonSharp.Runtime",
-        "",
-        "",
         "VRC.Udon"
     ],
     "includePlatforms": [],
