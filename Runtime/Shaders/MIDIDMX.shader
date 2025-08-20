@@ -124,19 +124,19 @@ Shader "Micca/MIDIDMX"
                         col = _Block2[channel];
                         break;
                     case 3:
-                        col = _Block2[channel];
+                        col = _Block3[channel];
                         break;
                     case 4:
-                        col = _Block2[channel];
+                        col = _Block4[channel];
                         break;
                     case 5:
-                        col = _Block2[channel];
+                        col = _Block5[channel];
                         break;
                     case 6:
-                        col = _Block2[channel];
+                        col = _Block6[channel];
                         break;
                     case 7:
-                        col = _Block2[channel];
+                        col = _Block7[channel];
                         break;
                     default:
                         col = 0;
