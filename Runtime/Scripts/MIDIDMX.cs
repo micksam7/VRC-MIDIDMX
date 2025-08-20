@@ -3,8 +3,13 @@ using UnityEngine;
 using VRC.SDK3.Midi;
 using VRC.SDKBase;
 using VRC.Udon;
-using System.Collections.Generic;
 using System;
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+using UnityEditor.Build;
+using UnityEditor;
+using UdonSharpEditor;
+#endif
 
 //micca code
 //this udon was written to keep the number of non-extern ops low
@@ -27,6 +32,10 @@ public class MIDIDMX : UdonSharpBehaviour
     public RenderTexture DMXTexture;
     public Material MIDIDMXRenderMat;
 
+    public UdonSharpBehaviour vrslReadback;
+    public RenderTexture storedTexture;
+    public RenderTexture internalTexture;
+
     private int dataBlock = 0;
 
     private float lastUpdate = 0;
@@ -35,11 +44,11 @@ public class MIDIDMX : UdonSharpBehaviour
     bool previousState = false;
     int knockState = 0;
 
-    Component[] eventObjects = new Component[0];
-    string[] eventCallbacks = new string[0];
+    [NonSerialized] Component[] eventObjects = new Component[0];
+    [NonSerialized] string[] eventCallbacks = new string[0];
 
     //float for final shader
-    [System.NonSerialized]
+    [NonSerialized]
     private float[][] data = {
         new float[2048], new float[2048], new float[2048], new float[2048],
         new float[2048], new float[2048], new float[2048], new float[2048], };
@@ -47,6 +56,13 @@ public class MIDIDMX : UdonSharpBehaviour
     void Start()
     {
         MIDIDMXRenderMat.SetInt("_Mode", (int)mode);
+
+        if (vrslReadback != null) {
+            storedTexture = (RenderTexture) vrslReadback.GetProgramVariable("texture");
+        }
+
+        internalTexture = new RenderTexture(DMXTexture);
+        internalTexture.name = "MIDIDMX Temporary Texture"; //for editor really
     }
 
     /// <summary>
@@ -121,11 +137,7 @@ public class MIDIDMX : UdonSharpBehaviour
             }
             else if (knockState == 2 && value == 107)
             {
-                knockState = 3;
-                state = true;
-                Debug.Log("[MIDIDMX] state and ready.");
-                dataBlock = 0;
-                ClearChannels();
+                MidiStart();
             }
             else
             {
@@ -171,8 +183,7 @@ public class MIDIDMX : UdonSharpBehaviour
         //Otherwise we release the texture [assuming script order is right :)]
         if (state && lastUpdate > Time.fixedTime - 5)
         {
-            //unrolllllllllllllllllll
-            //tho those ids should be ints tbh
+            //these ids should be ints tbh
             MIDIDMXRenderMat.SetFloatArray("_Block0", data[0]);
             MIDIDMXRenderMat.SetFloatArray("_Block1", data[1]);
             MIDIDMXRenderMat.SetFloatArray("_Block2", data[2]);
@@ -182,14 +193,15 @@ public class MIDIDMX : UdonSharpBehaviour
             MIDIDMXRenderMat.SetFloatArray("_Block6", data[6]);
             MIDIDMXRenderMat.SetFloatArray("_Block7", data[7]);
 
-            VRCGraphics.Blit(null, DMXTexture, MIDIDMXRenderMat); //replaces the video texture
+            VRCGraphics.Blit(null, internalTexture, MIDIDMXRenderMat); //generates the dmx gridnode
+            VRCGraphics.Blit(internalTexture, DMXTexture); //replaces the video texture
         }
         else
         {
-            state = false;
-            knockState = 0;
+            MidiEnd();
         }
 
+        //Process registered events
         if (previousState != state)
         {
             previousState = state;
@@ -197,7 +209,27 @@ public class MIDIDMX : UdonSharpBehaviour
         }
     }
 
+    //Enable/Disable
+    void MidiStart() {
+        knockState = 3;
+        state = true;
+        Debug.Log("[MIDIDMX] Unlocked and ready.");
+        dataBlock = 0;
+        ClearChannels();
 
+        if (vrslReadback != null) {
+            vrslReadback.SetProgramVariable("texture",internalTexture);
+        }
+    }
+
+    void MidiEnd() {
+        state = false;
+        knockState = 0;
+        
+        if (vrslReadback != null) {
+            vrslReadback.SetProgramVariable("texture",storedTexture);
+        }
+    }
 
     //util functions
     private string[] Add(string[] inputArray, string toAdd)
@@ -218,3 +250,48 @@ public class MIDIDMX : UdonSharpBehaviour
         return output;
     }
 }
+
+//Some fun engine jank so we can deal with the VRSL readback
+#if UNITY_EDITOR && !COMPILER_UDONSHARP
+    [CustomEditor(typeof(MIDIDMX))]
+    [CanEditMultipleObjects]
+    public class MIDIDMX_Editor : Editor
+    {
+        SerializedProperty vrslReadback;
+
+        void OnEnable()
+        {
+            vrslReadback = serializedObject.FindProperty("vrslReadback");
+        }
+
+        public override void OnInspectorGUI()
+        {
+            if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
+
+            //we can't tell if VRSL's readback is actually around or installed so
+            if (GUILayout.Button("Find VRSL Readback"))
+            {
+                Type assembly = Type.GetType("VRSL.VRSL_GPUReadBack, Assembly-CSharp");
+
+                if (assembly == null) {
+                    Debug.Log("[MIDIDMX] VRSL Readback not installed.");
+                    vrslReadback.objectReferenceValue = null;
+                } else {
+                    UnityEngine.Object component = FindObjectOfType(assembly);
+
+                    if (component == null) {
+                        Debug.Log("[MIDIDMX] No VRSL Readback found in scene.");
+                        vrslReadback.objectReferenceValue = null;
+                    } else {
+                        Debug.Log("[MIDIDMX] Found VRSL Readback. Configuring MIDIDMX to swap it's texture.");
+                        vrslReadback.objectReferenceValue = (UdonSharpBehaviour) component;
+                    }
+                }
+
+                serializedObject.ApplyModifiedProperties();
+            }
+
+            DrawDefaultInspector();
+        }
+    }
+#endif
