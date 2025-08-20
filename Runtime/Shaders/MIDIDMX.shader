@@ -109,33 +109,42 @@ Shader "Micca/MIDIDMX"
 
             float getBufferBlock(uint channel) {
                 float col = 0;
-                [branch]
-                if (channel <= BLOCKCHANNELS * 1) {
-                    col = _Block0[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 2) {
-                    channel -= BLOCKCHANNELS;
-                    col = _Block1[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 3) {
-                    channel -= BLOCKCHANNELS * 2;
-                    col = _Block2[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 4) {
-                    channel -= BLOCKCHANNELS * 3;
-                    col = _Block3[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 5) {
-                    channel -= BLOCKCHANNELS * 4;
-                    col = _Block4[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 6) {
-                    channel -= BLOCKCHANNELS * 5;
-                    col = _Block5[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 7) {
-                    channel -= BLOCKCHANNELS * 6;
-                    col = _Block6[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 8) {
-                    channel -= BLOCKCHANNELS * 7;
-                    col = _Block7[channel] / 255.;
-                } else {
-                    col = 0;
+                uint block = channel / BLOCKCHANNELS;
+                channel -= block * BLOCKCHANNELS;
+
+                [forcecase]
+                switch (block) {
+                    case 0:
+                        col = _Block0[channel];
+                        break;
+                    case 1:
+                        col = _Block1[channel];
+                        break;
+                    case 2:
+                        col = _Block2[channel];
+                        break;
+                    case 3:
+                        col = _Block2[channel];
+                        break;
+                    case 4:
+                        col = _Block2[channel];
+                        break;
+                    case 5:
+                        col = _Block2[channel];
+                        break;
+                    case 6:
+                        col = _Block2[channel];
+                        break;
+                    case 7:
+                        col = _Block2[channel];
+                        break;
+                    default:
+                        col = 0;
+                        break;
                 }
+
+                col /= 255.;
+
                 return col;
             }
 
