@@ -12,7 +12,7 @@ using UdonSharpEditor;
 #endif
 
 //micca code
-//this udon was written to keep the number of non-extern ops low
+//midi event handling is written to keep the number of non-extern ops low
 //so most of the work is shuffled off to a shader
 
 public enum MIDIDMXMode : int
@@ -24,17 +24,19 @@ public enum MIDIDMXMode : int
 
 //Attempts to execute after video players [to replace DMX texture]
 //If this doesn't work, you may need to come up with your own solution [definitely ping me about it though!]
+//See funny reflection used for the vrsl readback
 [DefaultExecutionOrder(1)]
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MIDIDMX : UdonSharpBehaviour
 {
+
     public MIDIDMXMode mode = 0;
     public RenderTexture DMXTexture;
     public Material MIDIDMXRenderMat;
 
     public UdonSharpBehaviour vrslReadback;
-    public RenderTexture storedTexture;
-    public RenderTexture internalTexture;
+    [NonSerialized] public RenderTexture storedTexture;
+    [NonSerialized] public RenderTexture internalTexture;
 
     private int dataBlock = 0;
 
@@ -44,8 +46,8 @@ public class MIDIDMX : UdonSharpBehaviour
     bool previousState = false;
     int knockState = 0;
 
-    [NonSerialized] Component[] eventObjects = new Component[0];
-    [NonSerialized] string[] eventCallbacks = new string[0];
+    Component[] eventObjects = new Component[0];
+    string[] eventCallbacks = new string[0];
 
     //float for final shader
     [NonSerialized]
@@ -55,14 +57,12 @@ public class MIDIDMX : UdonSharpBehaviour
 
     void Start()
     {
-        MIDIDMXRenderMat.SetInt("_Mode", (int)mode);
-
         if (vrslReadback != null) {
             storedTexture = (RenderTexture) vrslReadback.GetProgramVariable("texture");
         }
 
         internalTexture = new RenderTexture(DMXTexture);
-        internalTexture.name = "MIDIDMX Temporary Texture"; //for editor really
+        internalTexture.name = "MIDIDMX Temporary Texture"; //only for editor really
     }
 
     /// <summary>
@@ -251,47 +251,68 @@ public class MIDIDMX : UdonSharpBehaviour
     }
 }
 
-//Some fun engine jank so we can deal with the VRSL readback
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
-    [CustomEditor(typeof(MIDIDMX))]
-    [CanEditMultipleObjects]
-    public class MIDIDMX_Editor : Editor
-    {
-        SerializedProperty vrslReadback;
+[CustomEditor(typeof(MIDIDMX))]
+[CanEditMultipleObjects]
+public class MIDIDMX_Editor : Editor
+{
+    SerializedProperty vrslReadback;
+    SerializedProperty mode;
+    SerializedProperty MIDIDMXRenderMat;
 
-        void OnEnable()
+    int modeSaved = 0;
+
+    void OnEnable()
+    {
+        vrslReadback = serializedObject.FindProperty("vrslReadback");
+        mode = serializedObject.FindProperty("mode");
+        MIDIDMXRenderMat = serializedObject.FindProperty("MIDIDMXRenderMat");
+        modeSaved = mode.intValue;
+    }
+
+    public override void OnInspectorGUI()
+    {
+        if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
+
+        if (GUILayout.Button("Find Components"))
         {
-            vrslReadback = serializedObject.FindProperty("vrslReadback");
+            FindComponents();
         }
 
-        public override void OnInspectorGUI()
+        if (mode.intValue != modeSaved) {
+            modeSaved = mode.intValue;
+            Material mat = (Material) MIDIDMXRenderMat.objectReferenceValue;
+            mat.SetInt("_Mode", mode.intValue);
+            EditorUtility.SetDirty(mat);
+            Debug.Log("[MIDIDMX] Updated material");
+        }
+
+        DrawDefaultInspector();
+    }
+
+    void FindComponents() {
+        //Find VRSL Readback
         {
-            if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
+            //we love reflection
+            Type assembly = Type.GetType("VRSL.VRSL_GPUReadBack, Assembly-CSharp");
 
-            //we can't tell if VRSL's readback is actually around or installed so
-            if (GUILayout.Button("Find VRSL Readback"))
-            {
-                Type assembly = Type.GetType("VRSL.VRSL_GPUReadBack, Assembly-CSharp");
+            if (assembly == null) {
+                Debug.Log("[MIDIDMX] VRSL Readback not installed.");
+                vrslReadback.objectReferenceValue = null;
+            } else {
+                UnityEngine.Object component = FindObjectOfType(assembly);
 
-                if (assembly == null) {
-                    Debug.Log("[MIDIDMX] VRSL Readback not installed.");
+                if (component == null) {
+                    Debug.Log("[MIDIDMX] No VRSL Readback found in scene.");
                     vrslReadback.objectReferenceValue = null;
                 } else {
-                    UnityEngine.Object component = FindObjectOfType(assembly);
-
-                    if (component == null) {
-                        Debug.Log("[MIDIDMX] No VRSL Readback found in scene.");
-                        vrslReadback.objectReferenceValue = null;
-                    } else {
-                        Debug.Log("[MIDIDMX] Found VRSL Readback. Configuring MIDIDMX to swap it's texture.");
-                        vrslReadback.objectReferenceValue = (UdonSharpBehaviour) component;
-                    }
+                    Debug.Log("[MIDIDMX] Found VRSL Readback. Configuring MIDIDMX to swap it's texture.");
+                    vrslReadback.objectReferenceValue = (UdonSharpBehaviour) component;
                 }
-
-                serializedObject.ApplyModifiedProperties();
             }
-
-            DrawDefaultInspector();
         }
+
+        serializedObject.ApplyModifiedProperties();
     }
+}
 #endif
