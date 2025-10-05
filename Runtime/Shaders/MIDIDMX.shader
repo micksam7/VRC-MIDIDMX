@@ -110,27 +110,27 @@ Shader "Micca/MIDIDMX"
             float getBufferBlock(uint channel) {
                 float col = 0;
                 [branch]
-                if (channel <= BLOCKCHANNELS * 1) {
+                if (channel + 1 <= BLOCKCHANNELS * 1) {
                     col = _Block0[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 2) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 2) {
                     channel -= BLOCKCHANNELS;
                     col = _Block1[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 3) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 3) {
                     channel -= BLOCKCHANNELS * 2;
                     col = _Block2[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 4) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 4) {
                     channel -= BLOCKCHANNELS * 3;
                     col = _Block3[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 5) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 5) {
                     channel -= BLOCKCHANNELS * 4;
                     col = _Block4[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 6) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 6) {
                     channel -= BLOCKCHANNELS * 5;
                     col = _Block5[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 7) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 7) {
                     channel -= BLOCKCHANNELS * 6;
                     col = _Block6[channel] / 255.;
-                } else if (channel <= BLOCKCHANNELS * 8) {
+                } else if (channel + 1 <= BLOCKCHANNELS * 8) {
                     channel -= BLOCKCHANNELS * 7;
                     col = _Block7[channel] / 255.;
                 } else {
@@ -168,3 +168,4 @@ Shader "Micca/MIDIDMX"
         }
     }
 }
+
