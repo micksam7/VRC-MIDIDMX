@@ -6,6 +6,10 @@ using VRC.Udon;
 using System.Collections.Generic;
 using System;
 
+#if UNITY_EDITOR && !COMPILER_UDONSHARP
+using UnityEditor;
+#endif
+
 //micca code
 //this udon was written to keep the number of non-extern ops low
 //so most of the work is shuffled off to a shader
@@ -218,3 +222,32 @@ public class MIDIDMX : UdonSharpBehaviour
         return output;
     }
 }
+
+#if UNITY_EDITOR && !COMPILER_UDONSHARP
+[CustomEditor(typeof(MIDIDMX))]
+[CanEditMultipleObjects]
+public class MIDIDMX_Editor : Editor
+{
+    SerializedProperty MIDIDMXRenderMat;
+    SerializedProperty mode;
+
+    void OnEnable()
+    {
+        MIDIDMXRenderMat = serializedObject.FindProperty("MIDIDMXRenderMat");
+        mode = serializedObject.FindProperty("mode");
+    }
+
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+
+        Material mat = (Material)MIDIDMXRenderMat.objectReferenceValue;
+
+        int iMode = mode.intValue;
+
+        mat.SetInt("_Mode", iMode);
+
+        EditorUtility.SetDirty(mat);
+    }
+}
+#endif
