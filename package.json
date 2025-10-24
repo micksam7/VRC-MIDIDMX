@@ -1,7 +1,7 @@
 {
   "name": "com.micksam7.mididmx",
   "displayName": "MIDIDMX",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Realtime DMX control for VRChat Worlds using MIDI",
   "gitDependencies": {},
   "vpmDependencies": {},
