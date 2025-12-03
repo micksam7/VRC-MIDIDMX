@@ -1,5 +1,5 @@
 ![MIDIDMX, of screaming really loudly over MIDI.](Runtime/Propaganda/logo-cropped.png)
-A method for implementing local realtime DMX control into a VRChat world over MIDI interfaces.
+A method for implementing realtime DMX control into a VRChat world for previewing DMX lights and FX. Not intended to replace video for mass operation.
 
 Currently this project assists local light programming and is unsynced. You'll still need to do the usual VRSL video stream for everyone else. A synced mode may come later if [it's requested](https://github.com/micksam7/VRC-MIDIDMX/issues/2).
 
