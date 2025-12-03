@@ -183,7 +183,7 @@ public class MIDIDMX : UdonSharpBehaviour
         //Otherwise we release the texture [assuming script order is right :)]
         if (state && lastUpdate > Time.fixedTime - 5)
         {
-            //these ids should be ints tbh
+            //tho those ids should be ints tbh
             MIDIDMXRenderMat.SetFloatArray("_Block0", data[0]);
             MIDIDMXRenderMat.SetFloatArray("_Block1", data[1]);
             MIDIDMXRenderMat.SetFloatArray("_Block2", data[2]);
