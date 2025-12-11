@@ -3,7 +3,7 @@ Shader "Micca/MIDIDMX"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        [KeywordEnum(VRSL, VRSL9, MDMX, MDMX0)] _Mode ("Mode", Int) = 0
+        [KeywordEnum(VRSL, VRSL9, MDMX, MDMX0, VRSLV)] _Mode ("Mode", Int) = 0
     }
     SubShader
     {
@@ -18,7 +18,7 @@ Shader "Micca/MIDIDMX"
 
             #include "UnityCG.cginc"
 
-            #pragma shader_feature_local _MODE_VRSL _MODE_VRSL9 _MODE_MDMX _MODE_MDMX0
+            #pragma shader_feature_local _MODE_VRSL _MODE_VRSL9 _MODE_MDMX _MODE_MDMX0 _MODE_VRSLV
 
             #define MDMXSPACINGX 128
             #define MDMXSPACINGY 128
@@ -29,6 +29,10 @@ Shader "Micca/MIDIDMX"
 
             #define VRSLSPACINGX 13
             #define VRSLSPACINGY 120
+
+            //vrsl vertical mode
+            #define VRSLVSPACINGX 13
+            #define VRSLVSPACINGY 67.5 //.5 ????
 
             #define BLOCKCHANNELS 2048
 
@@ -58,9 +62,15 @@ Shader "Micca/MIDIDMX"
             uint getChannel(float2 coord) {
                 uint t = 0;
 
-                #if defined(_MODE_VRSL) || defined(_MODE_VRSL9)
-                    const int sx = VRSLSPACINGX;
-                    const int sy = VRSLSPACINGY;
+                //todo: fix this macro mess
+                #if defined(_MODE_VRSL) || defined(_MODE_VRSL9) || defined(_MODE_VRSLV)
+                    #ifdef _MODE_VRSLV
+                        const int sx = VRSLVSPACINGX;
+                        const int sy = VRSLVSPACINGY;
+                    #else
+                        const int sx = VRSLSPACINGX;
+                        const int sy = VRSLSPACINGY;
+                    #endif
                 #else
                     #ifdef _MODE_MDMX0
                         const int sx = MDMX0SPACINGX;
@@ -77,8 +87,8 @@ Shader "Micca/MIDIDMX"
                 t += x;
 
                 //VRSL compat
-                #if defined(_MODE_VRSL) || defined(_MODE_VRSL9)
-                t -= floor(t / 520) * 8; //520 channel seperation instead of 512
+                #if !defined(_MODE_MDMX) && !defined(_MODE_MDMX0)
+                    t -= floor(t / 520) * 8; //520 channel seperation instead of 512
                 #endif
                 
                 return t;
@@ -161,22 +171,22 @@ Shader "Micca/MIDIDMX"
             {
                 float4 col = 0;
 
-                #if defined(_MODE_VRSL) || defined(_MODE_MDMX) || defined(_MODE_MDMX0)
-                uint channel = getChannel(i.uv);
-                col = getBufferBlock(channel);
-                #endif
-
                 #ifdef _MODE_VRSL9
-                uint channel = getChannel(i.uv);
+                    uint channel = getChannel(i.uv);
 
-                col.r = _Block0[channel] / 255.;
+                    col.r = _Block0[channel] / 255.;
 
-                channel += 1536;
-                col.g = getBufferBlock(channel);
+                    channel += 1536;
+                    col.g = getBufferBlock(channel);
 
-                channel += 1536;
-                col.b = getBufferBlock(channel);
+                    channel += 1536;
+                    col.b = getBufferBlock(channel);
+                #else
+                    uint channel = getChannel(i.uv);
+                    col = getBufferBlock(channel);
                 #endif
+
+
 
                 col.a = 1;
 
