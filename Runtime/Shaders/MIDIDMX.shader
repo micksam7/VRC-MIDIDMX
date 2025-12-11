@@ -3,7 +3,7 @@ Shader "Micca/MIDIDMX"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        [KeywordEnum(VRSL, VRSL9, MDMX)] _Mode ("Mode", Int) = 0
+        [KeywordEnum(VRSL, VRSL9, MDMX, MDMX0)] _Mode ("Mode", Int) = 0
     }
     SubShader
     {
@@ -18,10 +18,14 @@ Shader "Micca/MIDIDMX"
 
             #include "UnityCG.cginc"
 
-            #pragma shader_feature_local _MODE_VRSL _MODE_VRSL9 _MODE_MDMX
+            #pragma shader_feature_local _MODE_VRSL _MODE_VRSL9 _MODE_MDMX _MODE_MDMX0
 
             #define MDMXSPACINGX 128
             #define MDMXSPACINGY 128
+
+            //old mdmx from somna that tried to keep some VRSL compatibility
+            #define MDMX0SPACINGX 13
+            #define MDMX0SPACINGY 315
 
             #define VRSLSPACINGX 13
             #define VRSLSPACINGY 120
@@ -55,11 +59,16 @@ Shader "Micca/MIDIDMX"
                 uint t = 0;
 
                 #if defined(_MODE_VRSL) || defined(_MODE_VRSL9)
-                const int sx = VRSLSPACINGX;
-                const int sy = VRSLSPACINGY;
+                    const int sx = VRSLSPACINGX;
+                    const int sy = VRSLSPACINGY;
                 #else
-                const int sx = MDMXSPACINGX;
-                const int sy = MDMXSPACINGY;
+                    #ifdef _MODE_MDMX0
+                        const int sx = MDMX0SPACINGX;
+                        const int sy = MDMX0SPACINGY;
+                    #else
+                        const int sx = MDMXSPACINGX;
+                        const int sy = MDMXSPACINGY;
+                    #endif
                 #endif
 
                 uint x = floor(coord.x * sx);

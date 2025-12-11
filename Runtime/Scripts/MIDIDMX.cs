@@ -19,7 +19,8 @@ public enum MIDIDMXMode : int
 {
     VRSL,
     VRSLNineUniverse,
-    MDMX
+    MDMX,
+    MDMXOld
 };
 
 //Attempts to execute after video players [to replace DMX texture]

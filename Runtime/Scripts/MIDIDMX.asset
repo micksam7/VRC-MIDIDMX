@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: MIDIDMX
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: fbe593d959021b34ea13d815827e04d2, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: a88c55f443f947349bd477d8c54a0a4f,
+    type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: a160a01dd91cdf048bb1900003e55480, type: 3}
