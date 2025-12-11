@@ -161,7 +161,7 @@ Shader "Micca/MIDIDMX"
             {
                 float4 col = 0;
 
-                #if defined(_MODE_VRSL) || defined(_MODE_MDMX)
+                #if defined(_MODE_VRSL) || defined(_MODE_MDMX) || defined(_MODE_MDMX0)
                 uint channel = getChannel(i.uv);
                 col = getBufferBlock(channel);
                 #endif
