@@ -74,6 +74,13 @@ public class MIDIDMX : UdonSharpBehaviour
 
         internalTexture = new RenderTexture(DMXTexture);
         internalTexture.name = "MIDIDMX Temporary Texture"; //only for editor really
+
+        if (logoMat != null)
+        {
+            logoMat.SetColor("_Color", Color.white);
+        }
+
+        state = false;
     }
 
     /// <summary>
