@@ -31,7 +31,7 @@ public enum MIDIDMXMode : int
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MIDIDMX : UdonSharpBehaviour
 {
-
+    [Header("DMX Configuration")]
     public MIDIDMXMode mode = 0;
     public RenderTexture DMXTexture;
     public Material MIDIDMXRenderMat;
@@ -39,6 +39,15 @@ public class MIDIDMX : UdonSharpBehaviour
     public UdonSharpBehaviour vrslReadback;
     [NonSerialized] public RenderTexture storedTexture;
     [NonSerialized] public RenderTexture internalTexture;
+
+    [Header("Multi-Input Data Masking")]
+    public bool enableMask = false;
+    public Material conversionMat;
+    public uint maskIndex = 0;
+    public Texture[] masks;
+
+    [Header("Logo Status")]
+    public Material logoMat;
 
     private int dataBlock = 0;
 
@@ -195,7 +204,18 @@ public class MIDIDMX : UdonSharpBehaviour
             MIDIDMXRenderMat.SetFloatArray("_Block6", data[6]);
             MIDIDMXRenderMat.SetFloatArray("_Block7", data[7]);
 
-            VRCGraphics.Blit(null, internalTexture, MIDIDMXRenderMat); //generates the dmx gridnode
+            MIDIDMXRenderMat.SetFloat("_MaskingEnable", enableMask ? 1f : 0f);
+            if (enableMask && maskIndex < masks.Length) {
+                if (conversionMat != null)
+                    VRCGraphics.Blit(null, DMXTexture, conversionMat);
+
+                VRCGraphics.Blit(DMXTexture, internalTexture, MIDIDMXRenderMat); 
+                MIDIDMXRenderMat.SetTexture("_MaskingTex", masks[maskIndex]);
+            } else
+            {
+                VRCGraphics.Blit(null, internalTexture, MIDIDMXRenderMat); //generates the dmx gridnode
+            }
+
             VRCGraphics.Blit(internalTexture, DMXTexture); //replaces the video texture
         }
         else
@@ -222,6 +242,11 @@ public class MIDIDMX : UdonSharpBehaviour
         if (vrslReadback != null) {
             vrslReadback.SetProgramVariable("texture",internalTexture);
         }
+
+        if (logoMat != null)
+        {
+            logoMat.SetColor("_Color", Color.green);
+        }
     }
 
     void MidiEnd() {
@@ -230,6 +255,11 @@ public class MIDIDMX : UdonSharpBehaviour
         
         if (vrslReadback != null) {
             vrslReadback.SetProgramVariable("texture",storedTexture);
+        }
+
+        if (logoMat != null)
+        {
+            logoMat.SetColor("_Color", Color.white);
         }
     }
 

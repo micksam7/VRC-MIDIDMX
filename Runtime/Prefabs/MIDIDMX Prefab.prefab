@@ -74,6 +74,12 @@ MonoBehaviour:
   mode: 0
   DMXTexture: {fileID: 8400000, guid: 87c3021d20ea2004cad2ca0d2dd14d07, type: 2}
   MIDIDMXRenderMat: {fileID: 2100000, guid: f77b49a3291c86f4fa428ba0239d3e7e, type: 2}
+  vrslReadback: {fileID: 0}
+  enableMask: 0
+  conversionMat: {fileID: 0}
+  maskIndex: 0
+  masks: []
+  logoMat: {fileID: 2100000, guid: 200f5bdea803c4c4baf94d2eea160d4e, type: 2}
 --- !u!114 &3219885909157051616
 MonoBehaviour:
   m_ObjectHideFlags: 0

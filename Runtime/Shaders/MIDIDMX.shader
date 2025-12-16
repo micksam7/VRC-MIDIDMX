@@ -2,7 +2,9 @@ Shader "Micca/MIDIDMX"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _MainTex ("Pass Through Texture", 2D) = "black" {}
+        _MaskingTex ("Pass Through Mask", 2D) = "black" {}
+        _MaskingEnable ("Masking Strength", Range(0,1)) = 0
         [KeywordEnum(VRSL, VRSL9, MDMX, MDMX0, VRSLV)] _Mode ("Mode", Int) = 0
     }
     SubShader
@@ -49,7 +51,10 @@ Shader "Micca/MIDIDMX"
             };
 
             sampler2D _MainTex;
+            sampler2D _MaskingTex;
             float4 _MainTex_ST;
+            float4 _MaskingTex_ST;
+            float _MaskingEnable;
 
             v2f vert (appdata v)
             {
@@ -186,7 +191,8 @@ Shader "Micca/MIDIDMX"
                     col = getBufferBlock(channel);
                 #endif
 
-
+                float mask = tex2Dlod(_MaskingTex,float4(i.uv,0,0)).r * _MaskingEnable;
+                col = lerp(col,tex2Dlod(_MainTex,float4(i.uv,0,0)),mask);
 
                 col.a = 1;
 
