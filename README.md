@@ -17,7 +17,7 @@ If you're using [VideoTXL](https://github.com/vrctxl/VideoTXL), drop the prefab 
 Other setups may require a toggle or another method. Please submit an issue or PR if you run into a case like this!
 
 ## For Light Programmers
-Requires a compatible gridnode, such as [HNode](https://github.com/Happyrobot33/HNode), and a midi loopback.
+Requires a compatible gridnode, such as [FGrid](https://github.com/furality/furality-grid-node) or [HNode](https://github.com/Happyrobot33/HNode), and a midi loopback.
 
 For loopback, [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) with **feedback detection turned off** is recommended.
 
