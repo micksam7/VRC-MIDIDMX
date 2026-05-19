@@ -20,7 +20,7 @@ Shader "Micca/MIDIDMX"
 
             #include "UnityCG.cginc"
 
-            #pragma shader_feature_local _MODE_VRSL _MODE_VRSL9 _MODE_MDMX _MODE_MDMX0 _MODE_VRSLV
+            #pragma multi_compile _MODE_VRSL _MODE_VRSL9 _MODE_MDMX _MODE_MDMX0 _MODE_VRSLV
 
             #define MDMXSPACINGX 128
             #define MDMXSPACINGY 128
