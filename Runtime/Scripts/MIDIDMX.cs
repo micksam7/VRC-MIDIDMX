@@ -1,4 +1,4 @@
-﻿using UdonSharp;
+using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.Midi;
 using VRC.SDKBase;
@@ -74,6 +74,8 @@ public class MIDIDMX : UdonSharpBehaviour
 
         internalTexture = new RenderTexture(DMXTexture);
         internalTexture.name = "MIDIDMX Temporary Texture"; //only for editor really
+
+        MIDIDMXRenderMat.SetInt("_Mode", (int)mode);
 
         if (logoMat != null)
         {
