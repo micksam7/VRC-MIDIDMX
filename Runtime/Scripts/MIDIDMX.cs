@@ -5,6 +5,8 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 using System.Text.RegularExpressions;
+using VRC;
+
 
 
 
@@ -63,7 +65,6 @@ public class MIDIDMX : UdonSharpBehaviour
     bool previousState = false;
     int knockState = 0;
 
-    bool isMidi = false;
     bool isChar = false;
 
     Component[] eventObjects = new Component[0];
@@ -95,7 +96,7 @@ public class MIDIDMX : UdonSharpBehaviour
 
         state = false;
 
-        Debug.Log("MIDIDMX:CHAR is available in this world. https://github.com/micksam7/VRC-MIDIDMX");
+        Debug.Log("[MIDIDMX] MIDIDMX:CHAR is available in this world. https://github.com/micksam7/VRC-MIDIDMX");
     }
 
     /// <summary>
@@ -137,6 +138,8 @@ public class MIDIDMX : UdonSharpBehaviour
     //because of _fun_ buffer issues [see below in midicontrolchange]
     public override void MidiNoteOn(int channel, int number, int velocity)
     {
+        if (isChar) return;
+
         int address = (channel << 6) + ((number >> 1) & 0xFF);
         velocity += (number << 7) & 0xFF;
         //Debug.Log($"MIDION: {address} = {velocity}");
@@ -146,6 +149,8 @@ public class MIDIDMX : UdonSharpBehaviour
     //other half of the block
     public override void MidiNoteOff(int channel, int number, int velocity)
     {
+        if (isChar) return;
+
         int address = (channel << 6) + ((number >> 1) & 0xFF) + 1024;
         velocity += (number << 7) & 0xFF;
         //Debug.Log($"MIDIOFF: {address} = {velocity}");
@@ -154,6 +159,8 @@ public class MIDIDMX : UdonSharpBehaviour
 
     public override void MidiControlChange(int channel, int number, int value)
     {
+        if (isChar) return;
+
         //all control messages are channel 15 and note 127
         if (channel != 15 || number != 127) return;
 
@@ -212,7 +219,7 @@ public class MIDIDMX : UdonSharpBehaviour
 
     void Update()
     {
-        //WM_CHAR support start
+        //WM_CHAR support start [aka keyboard emulation]
         //as usual, we need to avoid running as much udon as possible
         //so this is engineered to rely on externs as much as is reasonable
         //because of the already high cpu overhead, we're aiming to copy entire chunks into the shader cbuffer
@@ -226,8 +233,9 @@ public class MIDIDMX : UdonSharpBehaviour
 
         //reset buffer to first occurance of "DMXSEND" if the buffer is lomg
         if (inputBuffer.Length > 102400) {
-            int split = inputBuffer.LastIndexOf("DMXSTART");
-            inputBuffer = inputBuffer[split..];
+            const char seperator = (char)0xFFFD;
+            int split = inputBuffer.LastIndexOf(seperator);
+            inputBuffer = inputBuffer.Substring(split);
 
             //if it's still too long, discard it entirely. oh well.
             if (inputBuffer.Length > 102400)
@@ -238,14 +246,16 @@ public class MIDIDMX : UdonSharpBehaviour
 
         //find any matches
         MatchCollection matches = Regex.Matches(inputBuffer,@"\uFFFD(.?)(.?)(.*?)\uFFFF",RegexOptions.Singleline);
-        foreach (Match match in matches)
+        for (int i = 0; i < matches.Count; i++) //can't use foreach because of udonsharp limitations
         {
+            Match match = matches[i];
             int startIndex = match.Captures[0].Value[0] - CHAR_OFFSET;
             int bufferSize = match.Captures[1].Value[0] - CHAR_OFFSET;
             string buffer = match.Captures[2].Value;
             buffer = Regex.Replace(buffer,@"([^\u0400-\uFFFF])",""); //remove any characters outside of our working range [ie user keyboard input]
-            if (buffer.Length != match.Captures[1].Value[0] - CHAR_OFFSET)
+            if (buffer.Length != bufferSize)
             {
+                Debug.Log($"[MIDIDMX] Discarded a message because of length mismatch: {buffer.Length} != {bufferSize}");
                 continue; //discard because there's extra or missing data in it somewhere
             }
 
@@ -253,6 +263,7 @@ public class MIDIDMX : UdonSharpBehaviour
             int endBlock = (startIndex + bufferSize) / BLOCK_SIZE;
             if (startBlock < 0 || startBlock > 8 || endBlock - startBlock > 1)
             {
+                Debug.Log($"[MIDIDMX] Discarded a message because of an invalid start range and/or length: {startIndex} {bufferSize}");
                 continue; //out of range or something
             }
             startIndex -= startBlock*BLOCK_SIZE;
@@ -268,7 +279,19 @@ public class MIDIDMX : UdonSharpBehaviour
             }
         }
 
-        //todo: initialize state and update shader
+        //update if we got data this frame
+        if (matches.Count > 0)
+        {
+            isChar = true;
+            lastUpdate = Time.fixedTime;
+            if (!state)
+            {
+                MidiStart();
+            }
+
+            //sends a log message so senders can tell when the buffer is done processing and can throttle themselves down if needed
+            Debug.Log("MIDIDMX:CHARREADY");
+        }
         
         //Only update if we're getting the ping packet
         //Otherwise we release the texture [assuming script order is right :)]
@@ -285,6 +308,9 @@ public class MIDIDMX : UdonSharpBehaviour
             MIDIDMXRenderMat.SetFloatArray("_Block7", data[7]);
 
             MIDIDMXRenderMat.SetFloat("_MaskingEnable", enableMask ? 1f : 0f);
+
+            MIDIDMXRenderMat.SetFloat("_CharInput", isChar ? 1f : 0f);
+            
             if (enableMask && maskIndex < masks.Length) {
                 if (conversionMat != null)
                     VRCGraphics.Blit(null, DMXTexture, conversionMat);
@@ -332,6 +358,7 @@ public class MIDIDMX : UdonSharpBehaviour
     void MidiEnd() {
         state = false;
         knockState = 0;
+        isChar = false;
         
         if (vrslReadback != null) {
             vrslReadback.SetProgramVariable("texture",storedTexture);
