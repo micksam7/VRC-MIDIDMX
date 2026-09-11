@@ -5,7 +5,6 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 using System.Text.RegularExpressions;
-using BestHTTP.Extensions;
 
 
 
@@ -269,7 +268,7 @@ public class MIDIDMX : UdonSharpBehaviour
             }
         }
 
-        Input.inputString.ToCharArray().CopyTo(data[0],0); //lmao
+        //todo: initialize state and update shader
         
         //Only update if we're getting the ping packet
         //Otherwise we release the texture [assuming script order is right :)]
