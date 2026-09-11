@@ -4,6 +4,10 @@ using VRC.SDK3.Midi;
 using VRC.SDKBase;
 using VRC.Udon;
 using System;
+using System.Text.RegularExpressions;
+using BestHTTP.Extensions;
+
+
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor.Build;
@@ -31,6 +35,9 @@ public enum MIDIDMXMode : int
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MIDIDMX : UdonSharpBehaviour
 {
+    const int BLOCK_SIZE = 2048; //size of blocks, do not change
+    const int CHAR_OFFSET = 1024; //offset for wm_char support, do not change
+
     [Header("DMX Configuration")]
     public MIDIDMXMode mode = 0;
     public RenderTexture DMXTexture;
@@ -57,14 +64,19 @@ public class MIDIDMX : UdonSharpBehaviour
     bool previousState = false;
     int knockState = 0;
 
+    bool isMidi = false;
+    bool isChar = false;
+
     Component[] eventObjects = new Component[0];
     string[] eventCallbacks = new string[0];
 
     //float for final shader
     [NonSerialized]
     private float[][] data = {
-        new float[2048], new float[2048], new float[2048], new float[2048],
-        new float[2048], new float[2048], new float[2048], new float[2048], };
+        new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE],
+        new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], };
+
+    string inputBuffer;
 
     void Start()
     {
@@ -83,6 +95,8 @@ public class MIDIDMX : UdonSharpBehaviour
         }
 
         state = false;
+
+        Debug.Log("MIDIDMX:CHAR is available in this world. https://github.com/micksam7/VRC-MIDIDMX");
     }
 
     /// <summary>
@@ -193,12 +207,70 @@ public class MIDIDMX : UdonSharpBehaviour
     {
         for (int i = 0; i < data.Length; i++)
         {
-            data[i] = new float[2048];
+            data[i] = new float[BLOCK_SIZE];
         }
     }
 
     void Update()
     {
+        //WM_CHAR support start
+        //as usual, we need to avoid running as much udon as possible
+        //so this is engineered to rely on externs as much as is reasonable
+        //because of the already high cpu overhead, we're aiming to copy entire chunks into the shader cbuffer
+        //so we aren't able to do individual channels, but the protocol allows a little bit of flexibility
+        //so if someone wants to go crazy on the sender with packing groups of changing channels together, it's possible
+
+        //keep a buffer on the offchance messages span over a few frames
+        inputBuffer = inputBuffer + Input.inputString;
+
+        Debug.Log($"Buffer: {inputBuffer}");
+
+        //reset buffer to first occurance of "DMXSEND" if the buffer is lomg
+        if (inputBuffer.Length > 102400) {
+            int split = inputBuffer.LastIndexOf("DMXSTART");
+            inputBuffer = inputBuffer[split..];
+
+            //if it's still too long, discard it entirely. oh well.
+            if (inputBuffer.Length > 102400)
+            {
+                inputBuffer = "";
+            }
+        }
+
+        //find any matches
+        MatchCollection matches = Regex.Matches(inputBuffer,@"\uFFFD(.?)(.?)(.*?)\uFFFF",RegexOptions.Singleline);
+        foreach (Match match in matches)
+        {
+            int startIndex = match.Captures[0].Value[0] - CHAR_OFFSET;
+            int bufferSize = match.Captures[1].Value[0] - CHAR_OFFSET;
+            string buffer = match.Captures[2].Value;
+            buffer = Regex.Replace(buffer,@"([^\u0400-\uFFFF])",""); //remove any characters outside of our working range [ie user keyboard input]
+            if (buffer.Length != match.Captures[1].Value[0] - CHAR_OFFSET)
+            {
+                continue; //discard because there's extra or missing data in it somewhere
+            }
+
+            int startBlock = startIndex / BLOCK_SIZE;
+            int endBlock = (startIndex + bufferSize) / BLOCK_SIZE;
+            if (startBlock < 0 || startBlock > 8 || endBlock - startBlock > 1)
+            {
+                continue; //out of range or something
+            }
+            startIndex -= startBlock*BLOCK_SIZE;
+
+            //if someone decides to give us a message that goes across blocks ... ugh fine.
+            if (endBlock != startBlock) {
+                //double copy
+                int split = (startIndex + bufferSize) % BLOCK_SIZE;
+                Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, BLOCK_SIZE - startIndex);
+                Array.Copy(buffer.ToCharArray(), split, data[endBlock], 0, split - bufferSize);
+            } else {
+                Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, buffer.Length);
+            }
+        }
+
+        Input.inputString.ToCharArray().CopyTo(data[0],0); //lmao
+        
         //Only update if we're getting the ping packet
         //Otherwise we release the texture [assuming script order is right :)]
         if (state && lastUpdate > Time.fixedTime - 5)
