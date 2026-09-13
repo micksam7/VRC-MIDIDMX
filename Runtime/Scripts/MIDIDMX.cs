@@ -5,10 +5,6 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 using System.Text.RegularExpressions;
-using VRC;
-
-
-
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor.Build;
@@ -38,6 +34,8 @@ public class MIDIDMX : UdonSharpBehaviour
 {
     const int BLOCK_SIZE = 2048; //size of blocks, do not change
     const int CHAR_OFFSET = 1024; //offset for wm_char support, do not change
+    const char DMX_START_CHAR = '\uFFFD'; //also change the regex in functions below
+    const char DMX_END_CHAR = '\uFFFF';
 
     [Header("DMX Configuration")]
     public MIDIDMXMode mode = 0;
@@ -222,20 +220,19 @@ public class MIDIDMX : UdonSharpBehaviour
         //WM_CHAR support start [aka keyboard emulation]
         //as usual, we need to avoid running as much udon as possible
         //so this is engineered to rely on externs as much as is reasonable
-        //because of the already high cpu overhead, we're aiming to copy entire chunks into the shader cbuffer
-        //so we aren't able to do individual channels, but the protocol allows a little bit of flexibility
+        //because of the already high cpu overhead from unity reading Windows Messages, we're aiming to copy entire chunks into the shader cbuffer
+        //so we aren't able to do individual channels, but the protocol allows a little bit of flexibility with start and length
         //so if someone wants to go crazy on the sender with packing groups of changing channels together, it's possible
 
         //keep a buffer on the offchance messages span over a few frames
         inputBuffer = inputBuffer + Input.inputString;
 
-        Debug.Log($"Buffer: {inputBuffer}");
+        //Debug.Log($"Buffer: {inputBuffer}");
 
         //reset buffer to first occurance of "DMXSEND" if the buffer is lomg
-        if (inputBuffer.Length > 102400) {
-            const char seperator = (char)0xFFFD;
-            int split = inputBuffer.LastIndexOf(seperator);
-            inputBuffer = inputBuffer.Substring(split);
+        if (inputBuffer.Length > 102400)
+        {
+            inputBuffer = inputBuffer.Substring(inputBuffer.LastIndexOf(DMX_START_CHAR));
 
             //if it's still too long, discard it entirely. oh well.
             if (inputBuffer.Length > 102400)
@@ -249,9 +246,9 @@ public class MIDIDMX : UdonSharpBehaviour
         for (int i = 0; i < matches.Count; i++) //can't use foreach because of udonsharp limitations
         {
             Match match = matches[i];
-            int startIndex = match.Captures[0].Value[0] - CHAR_OFFSET;
-            int bufferSize = match.Captures[1].Value[0] - CHAR_OFFSET;
-            string buffer = match.Captures[2].Value;
+            int startIndex = match.Groups[1].Value[0] - CHAR_OFFSET;
+            int bufferSize = match.Groups[2].Value[0] - CHAR_OFFSET;
+            string buffer = match.Groups[3].Value;
             buffer = Regex.Replace(buffer,@"([^\u0400-\uFFFF])",""); //remove any characters outside of our working range [ie user keyboard input]
             if (buffer.Length != bufferSize)
             {
@@ -291,6 +288,8 @@ public class MIDIDMX : UdonSharpBehaviour
 
             //sends a log message so senders can tell when the buffer is done processing and can throttle themselves down if needed
             Debug.Log("MIDIDMX:CHARREADY");
+
+            inputBuffer = inputBuffer.Substring(inputBuffer.LastIndexOf(DMX_END_CHAR));
         }
         
         //Only update if we're getting the ping packet
@@ -310,7 +309,7 @@ public class MIDIDMX : UdonSharpBehaviour
             MIDIDMXRenderMat.SetFloat("_MaskingEnable", enableMask ? 1f : 0f);
 
             MIDIDMXRenderMat.SetFloat("_CharInput", isChar ? 1f : 0f);
-            
+
             if (enableMask && maskIndex < masks.Length) {
                 if (conversionMat != null)
                     VRCGraphics.Blit(null, DMXTexture, conversionMat);
