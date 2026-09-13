@@ -257,8 +257,8 @@ public class MIDIDMX : UdonSharpBehaviour
             }
 
             int startBlock = startIndex / BLOCK_SIZE;
-            int endBlock = (startIndex + bufferSize) / BLOCK_SIZE;
-            if (startBlock < 0 || startBlock > 8 || endBlock - startBlock > 1)
+            int endBlock = (startIndex + bufferSize - 1) / BLOCK_SIZE;
+            if (startBlock < 0 || startBlock > 8 || endBlock > 8 || endBlock < 0 || endBlock - startBlock > 1)
             {
                 Debug.Log($"[MIDIDMX] Discarded a message because of an invalid start range and/or length: {startIndex} {bufferSize}");
                 continue; //out of range or something
@@ -268,9 +268,11 @@ public class MIDIDMX : UdonSharpBehaviour
             //if someone decides to give us a message that goes across blocks ... ugh fine.
             if (endBlock != startBlock) {
                 //double copy
-                int split = (startIndex + bufferSize) % BLOCK_SIZE;
+                int split = startIndex + bufferSize - BLOCK_SIZE;
+                int size = bufferSize - split;
                 Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, BLOCK_SIZE - startIndex);
-                Array.Copy(buffer.ToCharArray(), split, data[endBlock], 0, split - bufferSize);
+                Array.Copy(buffer.ToCharArray(), split, data[endBlock], 0, size);
+                //Debug.Log($"Split at {split} for block {startBlock} {endBlock} - {startIndex} {bufferSize}  -- split one: 0 {startIndex} {BLOCK_SIZE - startIndex} -- split two: {split} 0 {size}");
             } else {
                 Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, buffer.Length);
             }
