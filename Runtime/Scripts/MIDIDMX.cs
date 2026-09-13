@@ -4,6 +4,7 @@ using VRC.SDK3.Midi;
 using VRC.SDKBase;
 using VRC.Udon;
 using System;
+using System.Text.RegularExpressions;
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor.Build;
@@ -31,6 +32,11 @@ public enum MIDIDMXMode : int
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MIDIDMX : UdonSharpBehaviour
 {
+    const int BLOCK_SIZE = 2048; //size of blocks, do not change
+    const int CHAR_OFFSET = 1024; //offset for wm_char support, do not change
+    const char DMX_START_CHAR = '\uFFFD'; //also change the regex in functions below
+    const char DMX_END_CHAR = '\uFFFF';
+
     [Header("DMX Configuration")]
     public MIDIDMXMode mode = 0;
     public RenderTexture DMXTexture;
@@ -57,14 +63,18 @@ public class MIDIDMX : UdonSharpBehaviour
     bool previousState = false;
     int knockState = 0;
 
+    bool isChar = false;
+
     Component[] eventObjects = new Component[0];
     string[] eventCallbacks = new string[0];
 
     //float for final shader
     [NonSerialized]
     private float[][] data = {
-        new float[2048], new float[2048], new float[2048], new float[2048],
-        new float[2048], new float[2048], new float[2048], new float[2048], };
+        new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE],
+        new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], new float[BLOCK_SIZE], };
+
+    string inputBuffer;
 
     void Start()
     {
@@ -83,6 +93,8 @@ public class MIDIDMX : UdonSharpBehaviour
         }
 
         state = false;
+
+        Debug.Log("[MIDIDMX] MIDIDMX:CHAR is available in this world. https://github.com/micksam7/VRC-MIDIDMX");
     }
 
     /// <summary>
@@ -124,6 +136,8 @@ public class MIDIDMX : UdonSharpBehaviour
     //because of _fun_ buffer issues [see below in midicontrolchange]
     public override void MidiNoteOn(int channel, int number, int velocity)
     {
+        if (isChar) return;
+
         int address = (channel << 6) + ((number >> 1) & 0xFF);
         velocity += (number << 7) & 0xFF;
         //Debug.Log($"MIDION: {address} = {velocity}");
@@ -133,6 +147,8 @@ public class MIDIDMX : UdonSharpBehaviour
     //other half of the block
     public override void MidiNoteOff(int channel, int number, int velocity)
     {
+        if (isChar) return;
+
         int address = (channel << 6) + ((number >> 1) & 0xFF) + 1024;
         velocity += (number << 7) & 0xFF;
         //Debug.Log($"MIDIOFF: {address} = {velocity}");
@@ -141,6 +157,8 @@ public class MIDIDMX : UdonSharpBehaviour
 
     public override void MidiControlChange(int channel, int number, int value)
     {
+        if (isChar) return;
+
         //all control messages are channel 15 and note 127
         if (channel != 15 || number != 127) return;
 
@@ -193,12 +211,89 @@ public class MIDIDMX : UdonSharpBehaviour
     {
         for (int i = 0; i < data.Length; i++)
         {
-            data[i] = new float[2048];
+            data[i] = new float[BLOCK_SIZE];
         }
     }
 
     void Update()
     {
+        //WM_CHAR support start [aka keyboard emulation]
+        //as usual, we need to avoid running as much udon as possible
+        //so this is engineered to rely on externs as much as is reasonable
+        //because of the already high cpu overhead from unity reading Windows Messages, we're aiming to copy entire chunks into the shader cbuffer
+        //so we aren't able to do individual channels, but the protocol allows a little bit of flexibility with start and length
+        //so if someone wants to go crazy on the sender with packing groups of changing channels together, it's possible
+
+        //keep a buffer on the offchance messages span over a few frames
+        inputBuffer = inputBuffer + Input.inputString;
+
+        //Debug.Log($"Buffer: {inputBuffer}");
+
+        //reset buffer to first occurance of "DMXSEND" if the buffer is lomg
+        if (inputBuffer.Length > 102400)
+        {
+            inputBuffer = inputBuffer.Substring(inputBuffer.LastIndexOf(DMX_START_CHAR));
+
+            //if it's still too long, discard it entirely. oh well.
+            if (inputBuffer.Length > 102400)
+            {
+                inputBuffer = "";
+            }
+        }
+
+        //find any matches
+        MatchCollection matches = Regex.Matches(inputBuffer,@"\uFFFD(.?)(.?)(.*?)\uFFFF",RegexOptions.Singleline);
+        for (int i = 0; i < matches.Count; i++) //can't use foreach because of udonsharp limitations
+        {
+            Match match = matches[i];
+            int startIndex = match.Groups[1].Value[0] - CHAR_OFFSET;
+            int bufferSize = match.Groups[2].Value[0] - CHAR_OFFSET;
+            string buffer = match.Groups[3].Value;
+            buffer = Regex.Replace(buffer,@"([^\u0400-\uFFFF])",""); //remove any characters outside of our working range [ie user keyboard input]
+            if (buffer.Length != bufferSize)
+            {
+                Debug.Log($"[MIDIDMX] Discarded a message because of length mismatch: {buffer.Length} != {bufferSize}");
+                continue; //discard because there's extra or missing data in it somewhere
+            }
+
+            int startBlock = startIndex / BLOCK_SIZE;
+            int endBlock = (startIndex + bufferSize - 1) / BLOCK_SIZE;
+            if (startBlock < 0 || startBlock > 8 || endBlock > 8 || endBlock < 0 || endBlock - startBlock > 1)
+            {
+                Debug.Log($"[MIDIDMX] Discarded a message because of an invalid start range and/or length: {startIndex} {bufferSize}");
+                continue; //out of range or something
+            }
+            startIndex -= startBlock*BLOCK_SIZE;
+
+            //if someone decides to give us a message that goes across blocks ... ugh fine.
+            if (endBlock != startBlock) {
+                //double copy
+                int split = startIndex + bufferSize - BLOCK_SIZE;
+                int size = bufferSize - split;
+                Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, BLOCK_SIZE - startIndex);
+                Array.Copy(buffer.ToCharArray(), split, data[endBlock], 0, size);
+                //Debug.Log($"Split at {split} for block {startBlock} {endBlock} - {startIndex} {bufferSize}  -- split one: 0 {startIndex} {BLOCK_SIZE - startIndex} -- split two: {split} 0 {size}");
+            } else {
+                Array.Copy(buffer.ToCharArray(), 0, data[startBlock], startIndex, buffer.Length);
+            }
+        }
+
+        //update if we got data this frame
+        if (matches.Count > 0)
+        {
+            isChar = true;
+            lastUpdate = Time.fixedTime;
+            if (!state)
+            {
+                MidiStart();
+            }
+
+            //sends a log message so senders can tell when the buffer is done processing and can throttle themselves down if needed
+            Debug.Log("MIDIDMX:CHARREADY");
+
+            inputBuffer = inputBuffer.Substring(inputBuffer.LastIndexOf(DMX_END_CHAR));
+        }
+        
         //Only update if we're getting the ping packet
         //Otherwise we release the texture [assuming script order is right :)]
         if (state && lastUpdate > Time.fixedTime - 5)
@@ -214,6 +309,9 @@ public class MIDIDMX : UdonSharpBehaviour
             MIDIDMXRenderMat.SetFloatArray("_Block7", data[7]);
 
             MIDIDMXRenderMat.SetFloat("_MaskingEnable", enableMask ? 1f : 0f);
+
+            MIDIDMXRenderMat.SetFloat("_CharInput", isChar ? 1f : 0f);
+
             if (enableMask && maskIndex < masks.Length) {
                 if (conversionMat != null)
                     VRCGraphics.Blit(null, DMXTexture, conversionMat);
@@ -261,6 +359,7 @@ public class MIDIDMX : UdonSharpBehaviour
     void MidiEnd() {
         state = false;
         knockState = 0;
+        isChar = false;
         
         if (vrslReadback != null) {
             vrslReadback.SetProgramVariable("texture",storedTexture);
