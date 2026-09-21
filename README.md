@@ -44,3 +44,4 @@ And get the current status with:
 - Ensure you have your midi loopback device or software enabled before launching VRChat and your gridnode software.
 - Make sure you spelled your device name correctly in the [VRChat launch options](https://docs.vrchat.com/docs/launch-options).
 - If you're using a software loopback, make sure feedback detection is **disabled**. Some applications do not support disabling this. [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) does.
+- Make sure you haven't disabled debug logging. Without it, MIDIDMX cannot send ready signals back to the gridnode. Performance logging is not required.
