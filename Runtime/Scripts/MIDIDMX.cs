@@ -36,8 +36,10 @@ public class MIDIDMX : UdonSharpBehaviour
     public RenderTexture DMXTexture;
     public Material MIDIDMXRenderMat;
 
+    [Tooltip("Fixes MIDIDMX in some VRSL capture setups.")]
+    public bool vrslCameraFix = false;
     public UdonSharpBehaviour vrslReadback;
-    [NonSerialized] public RenderTexture storedTexture;
+    [NonSerialized] public RenderTexture readbackStoredTexture;
     [NonSerialized] public RenderTexture internalTexture;
 
     [Header("Multi-Input Data Masking")]
@@ -69,7 +71,7 @@ public class MIDIDMX : UdonSharpBehaviour
     void Start()
     {
         if (vrslReadback != null) {
-            storedTexture = (RenderTexture) vrslReadback.GetProgramVariable("texture");
+            readbackStoredTexture = (RenderTexture) vrslReadback.GetProgramVariable("texture");
         }
 
         internalTexture = new RenderTexture(DMXTexture);
@@ -240,6 +242,21 @@ public class MIDIDMX : UdonSharpBehaviour
         }
     }
 
+    //Camera-based VRSL setups sometimes don't get the texture overridden
+    void OnPreCull()
+    {
+        if (vrslCameraFix && state) {
+            VRCGraphics.Blit(internalTexture, DMXTexture);
+        }
+    }
+
+    void OnDisable()
+    {
+        if (state) {
+            MidiEnd();
+        }
+    }
+
     //Enable/Disable
     void MidiStart() {
         knockState = 3;
@@ -263,7 +280,7 @@ public class MIDIDMX : UdonSharpBehaviour
         knockState = 0;
         
         if (vrslReadback != null) {
-            vrslReadback.SetProgramVariable("texture",storedTexture);
+            vrslReadback.SetProgramVariable("texture",readbackStoredTexture);
         }
 
         if (logoMat != null)
@@ -298,6 +315,7 @@ public class MIDIDMX : UdonSharpBehaviour
 public class MIDIDMX_Editor : Editor
 {
     SerializedProperty vrslReadback;
+    SerializedProperty vrslControlPanel;
     SerializedProperty mode;
     SerializedProperty MIDIDMXRenderMat;
 
@@ -306,6 +324,7 @@ public class MIDIDMX_Editor : Editor
     void OnEnable()
     {
         vrslReadback = serializedObject.FindProperty("vrslReadback");
+        vrslControlPanel = serializedObject.FindProperty("vrslControlPanel");
         mode = serializedObject.FindProperty("mode");
         MIDIDMXRenderMat = serializedObject.FindProperty("MIDIDMXRenderMat");
         modeSaved = mode.intValue;
