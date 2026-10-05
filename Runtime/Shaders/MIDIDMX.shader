@@ -6,6 +6,7 @@ Shader "Micca/MIDIDMX"
         _MaskingTex ("Pass Through Mask", 2D) = "black" {}
         _MaskingEnable ("Masking Strength", Range(0,1)) = 0
         [KeywordEnum(VRSL, VRSL9, MDMX, MDMX0, VRSLV)] _Mode ("Mode", Int) = 0
+        [Toggle] _CharInput ("Is Char Input", Range(0, 1)) = 0
     }
     SubShader
     {
@@ -55,6 +56,7 @@ Shader "Micca/MIDIDMX"
             float4 _MainTex_ST;
             float4 _MaskingTex_ST;
             float _MaskingEnable;
+            float _CharInput;
 
             v2f vert (appdata v)
             {
@@ -167,7 +169,12 @@ Shader "Micca/MIDIDMX"
                         break;
                 }
 
-                col /= 255.;
+                if (_CharInput > 0) {
+                    col -= 1024;
+                    col /= 255.;
+                } else {
+                    col /= 255.;
+                }
 
                 return col;
             }
