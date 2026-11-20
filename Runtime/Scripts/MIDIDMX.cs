@@ -382,7 +382,7 @@ public class MIDIDMX_Editor : Editor
             Type assembly = Type.GetType("VRSL.VRSL_GPUReadBack, Assembly-CSharp");
 
             if (assembly == null) {
-                Debug.Log("[MIDIDMX] VRSL Readback not installed.");
+                Debug.Log("[MIDIDMX] VRSL Readback not installed. Skipping.");
                 vrslReadback.objectReferenceValue = null;
             } else {
                 UnityEngine.Object component = FindObjectOfType(assembly);
@@ -393,6 +393,27 @@ public class MIDIDMX_Editor : Editor
                 } else {
                     Debug.Log("[MIDIDMX] Found VRSL Readback. Configuring MIDIDMX to swap it's texture.");
                     vrslReadback.objectReferenceValue = (UdonSharpBehaviour) component;
+                }
+            }
+        }
+
+        //MDMX
+        {
+            Type assembly = Type.GetType("MDMX.MDMXController, com.micksam7.mdmx");
+
+            if (assembly == null) {
+                Debug.Log("[MIDIDMX] MDMX not installed. Skipping.");
+            } else {
+                UnityEngine.Object component = FindObjectOfType(assembly);
+
+                if (component == null) {
+                    Debug.Log("[MIDIDMX] MDMX found but not used in this scene. Skipping.");
+                } else {
+                    Debug.Log("[MIDIDMX] Found MDMX. Configuring MIDIDMX to use it.");
+                    mode.intValue = (int)MIDIDMXMode.MDMX;
+                    UdonSharpBehaviour behaviour = (UdonSharpBehaviour) component;
+                    DMXTexture.objectReferenceValue = (UnityEngine.Object) behaviour.GetProgramVariable("dmxInput");
+                    behaviour.SetProgramVariable("mididmx",(MIDIDMX)target);
                 }
             }
         }
