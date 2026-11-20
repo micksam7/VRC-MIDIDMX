@@ -78,6 +78,31 @@ public class MIDIDMX : UdonSharpBehaviour
         internalTexture.name = "MIDIDMX Temporary Texture"; //only for editor really
 
         MIDIDMXRenderMat.SetInt("_Mode", (int)mode);
+        //disable all the keywords then enable the correct one
+        MIDIDMXRenderMat.DisableKeyword("_MODE_VRSL");
+        MIDIDMXRenderMat.DisableKeyword("_MODE_VRSL9");
+        MIDIDMXRenderMat.DisableKeyword("_MODE_MDMX");
+        MIDIDMXRenderMat.DisableKeyword("_MODE_MDMX0");
+        MIDIDMXRenderMat.DisableKeyword("_MODE_VRSLV");
+
+        switch (mode)
+        {
+            case MIDIDMXMode.VRSL:
+                MIDIDMXRenderMat.EnableKeyword("_MODE_VRSL");
+                break;
+            case MIDIDMXMode.VRSLNineUniverse:
+                MIDIDMXRenderMat.EnableKeyword("_MODE_VRSL9");
+                break;
+            case MIDIDMXMode.MDMX:
+                MIDIDMXRenderMat.EnableKeyword("_MODE_MDMX");
+                break;
+            case MIDIDMXMode.MDMXOld:
+                MIDIDMXRenderMat.EnableKeyword("_MODE_MDMX0");
+                break;
+            case MIDIDMXMode.VRSLVertical:
+                MIDIDMXRenderMat.EnableKeyword("_MODE_VRSLV");
+                break;
+        }
 
         if (logoMat != null)
         {
